@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video — Diffusion Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e0e0e;
+      --surface:   #161616;
+      --surface2:  #1e1e1e;
+      --border:    #272727;
+      --border2:   #333;
+      --text:      #e8e8e8;
+      --text2:     #888;
+      --text3:     #555;
+      --accent:    #e8c547;
+      --accent-dim:#b89d33;
+      --success:   #4caf6e;
+      --error:     #cf4a4a;
+      --warning:   #d4882a;
+      --sidebar-w: 220px;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.5; overflow: hidden; }
+    body { display: flex; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: var(--sidebar-w); height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .logo { height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+    .logo-mark { width: 24px; height: 24px; background: var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-mark svg { width: 14px; height: 14px; }
+    .logo-name { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+    .nav { flex: 1; padding: 12px 8px; overflow-y: auto; }
+    .nav-group-label { font-size: 10.5px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 12px 8px; }
+    .nav-item, a.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-radius: 6px; cursor: pointer; color: var(--text2); font-size: 13.5px; font-weight: 400; transition: background 0.15s, color 0.15s; user-select: none; text-decoration: none; }
+    .nav-item:hover, a.nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active, a.nav-item.active { background: rgba(232,197,71,0.1); color: var(--accent); }
+    .nav-item svg, a.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; }
+    .nav-item.active svg, a.nav-item.active svg { opacity: 1; }
+    .nav-sep { height: 1px; background: var(--border); margin: 10px 8px; }
+    .sidebar-footer { padding: 14px 16px; border-top: 1px solid var(--border); }
+    .user-row { display: flex; align-items: center; gap: 8px; }
+    .user-dot { width: 7px; height: 7px; background: var(--success); border-radius: 50%; }
+    .user-label { font-size: 12px; color: var(--text3); }
+
+    /* ── Main layout ── */
+    .main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; }
+    .topbar-title { font-size: 13.5px; font-weight: 500; }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+    .workspace { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── Canvas ── */
+    .canvas-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+
+    .canvas-topbar { height: 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
+    .canvas-topbar-left { display: flex; align-items: center; gap: 10px; }
+    .canvas-label { font-size: 11.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+    .canvas-status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+    .canvas-viewport { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; background: #0a0a0a; background-image: linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px); background-size: 24px 24px; }
+
+    .canvas-placeholder { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text3); font-size: 13px; }
+    .canvas-placeholder-icon { width: 48px; height: 48px; border: 1.5px solid var(--border2); border-radius: 10px; display: flex; align-items: center; justify-content: center; opacity: 0.5; }
+    .canvas-placeholder-icon svg { width: 22px; height: 22px; }
+
+    /* Drop zone overlay */
+    .drop-overlay { position: absolute; inset: 0; background: rgba(232,197,71,0.06); border: 2px dashed var(--accent); border-radius: 8px; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: var(--accent); font-size: 13px; z-index: 10; }
+    .drop-overlay.active { display: flex; }
+
+    /* Source image thumbnail in panel */
+    .source-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); display: none; margin-top: 10px; background: var(--bg); }
+
+    /* Video result */
+    .result-video { max-width: 100%; max-height: 100%; border-radius: 6px; display: none; outline: none; }
+
+    /* Generation overlay */
+    .gen-overlay { position: absolute; inset: 0; background: rgba(10,10,10,0.85); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px; z-index: 20; }
+    .gen-overlay.active { display: flex; }
+    .gen-spinner { width: 36px; height: 36px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .gen-status { font-size: 13px; color: var(--text2); font-family: 'DM Mono', monospace; }
+
+    /* Canvas bottom bar */
+    .canvas-bottombar { height: 40px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 16px; flex-shrink: 0; }
+
+    /* ── Right panel ── */
+    .panel { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-scroll { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    .panel-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+    .block-title { font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+
+    /* Upload zone */
+    .upload-zone { border: 1.5px dashed var(--border2); border-radius: 8px; padding: 20px 12px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .upload-zone:hover { border-color: var(--accent-dim); background: rgba(232,197,71,0.03); }
+    .upload-zone.has-file { border-color: var(--success); border-style: solid; background: rgba(76,175,110,0.04); }
+    .upload-icon { width: 32px; height: 32px; border: 1px solid var(--border2); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+    .upload-icon svg { width: 16px; height: 16px; color: var(--text2); }
+    .upload-label { font-size: 12px; color: var(--text2); }
+    .upload-sublabel { font-size: 11px; color: var(--text3); }
+    .upload-filename { font-size: 11.5px; color: var(--success); font-family: 'DM Mono', monospace; word-break: break-all; }
+    #fileInput { display: none; }
+
+    /* Fields */
+    .field { margin-bottom: 10px; }
+    .field:last-child { margin-bottom: 0; }
+    .field-label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; }
+    .field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+    .field-label-row .field-label { margin-bottom: 0; }
+    .link-btn { background: none; border: none; color: var(--text3); font-size: 11.5px; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 0; transition: color 0.15s; }
+    .link-btn:hover, .link-btn.active { color: var(--accent); }
+
+    .field-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; resize: vertical; transition: border-color 0.15s; }
+    .field-input:hover { border-color: var(--border2); }
+    .field-input:focus { border-color: var(--accent-dim); }
+    textarea.field-input { min-height: 80px; line-height: 1.5; }
+
+    /* Ratio grid */
+    .ratio-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; max-height: 180px; overflow-y: auto; padding-right: 2px; }
+    .ratio-group-label { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em; grid-column: 1/-1; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border); }
+    .ratio-group-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .ratio-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 11.5px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s; line-height: 1.2; }
+    .ratio-btn span { font-size: 9.5px; font-family: 'DM Mono', monospace; color: var(--text3); }
+    .ratio-btn:hover { border-color: var(--border2); color: var(--text); }
+    .ratio-btn.active { border-color: var(--accent-dim); color: var(--accent); background: rgba(232,197,71,0.06); }
+    .ratio-btn.active span { color: var(--accent-dim); }
+
+    /* Custom size */
+    .params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .param-field { display: flex; flex-direction: column; gap: 4px; }
+    .param-input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12.5px; outline: none; width: 100%; transition: border-color 0.15s; }
+    .param-input:hover { border-color: var(--border2); }
+    .param-input:focus { border-color: var(--accent-dim); }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; }
+    .toggle-label { font-size: 12px; color: var(--text2); }
+    .toggle { position: relative; width: 36px; height: 20px; cursor: pointer; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track { position: absolute; inset: 0; background: var(--surface2); border: 1px solid var(--border2); border-radius: 20px; transition: background 0.2s; }
+    .toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+    .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; background: var(--text3); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); background: #000; }
+
+    /* Generate button */
+    .btn-generate { width: 100%; background: var(--accent); color: #000; border: none; border-radius: 8px; height: 42px; font-size: 13.5px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-generate:hover { background: var(--accent-dim); }
+    .btn-generate:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Secondary button */
+    .btn-secondary { height: 32px; padding: 0 14px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-secondary:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+    /* Icon button */
+    .icon-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+    .icon-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .icon-btn svg { width: 14px; height: 14px; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 20px; right: 20px; padding: 11px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; gap: 10px; z-index: 2000; transform: translateY(80px); opacity: 0; transition: transform 0.25s ease, opacity 0.25s ease; backdrop-filter: blur(10px); font-size: 13px; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error   { border-left: 3px solid var(--error); }
+    .toast.warning { border-left: 3px solid var(--warning); }
+    .toast-icon { font-size: 14px; }
+    .toast-message { color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 14 14" fill="none">
+          <rect x="1" y="1" width="5" height="5" fill="#000"/>
+          <rect x="8" y="1" width="5" height="5" fill="#000"/>
+          <rect x="1" y="8" width="5" height="5" fill="#000"/>
+          <rect x="8" y="8" width="5" height="5" fill="#000" opacity="0.4"/>
+        </svg>
+      </div>
+      <span class="logo-name">Diffusion Studio</span>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-group-label">Workspace</div>
+      <a class="nav-item" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        Generate
+      </a>
+      <a class="nav-item active" href="/video.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="23 7 16 12 23 17 23 7"/>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+        Video
+      </a>
+      <a class="nav-item" href="/gallery.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+        Gallery
+      </a>
+
+      <div class="nav-sep"></div>
+      <div class="nav-group-label">Config</div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Preferences
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        API Keys
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-dot"></div>
+        <span class="user-label">Connected · RunPod</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title">Video · LTX-2.3</span>
+      <div class="topbar-actions">
+        <button class="btn-secondary" id="downloadBtn" style="display:none" onclick="downloadVideo()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Download
+        </button>
+      </div>
+    </div>
+
+    <div class="workspace">
+
+      <!-- Canvas -->
+      <div class="canvas-wrap">
+        <div class="canvas-topbar">
+          <div class="canvas-topbar-left">
+            <span class="canvas-label">Preview</span>
+            <span class="canvas-status" id="canvasStatus">—</span>
+          </div>
+        </div>
+
+        <div class="canvas-viewport" id="canvasViewport">
+          <div class="canvas-placeholder" id="placeholder">
+            <div class="canvas-placeholder-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="2"/>
+              </svg>
+            </div>
+            <span>Upload an image to start</span>
+          </div>
+
+          <video id="resultVideo" class="result-video" controls loop playsinline></video>
+
+          <div class="drop-overlay" id="dropOverlay">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            Drop image here
+          </div>
+
+          <div class="gen-overlay" id="genOverlay">
+            <div class="gen-spinner"></div>
+            <span class="gen-status" id="genStatus">Sending to RunPod...</span>
+          </div>
+        </div>
+
+        <div class="canvas-bottombar">
+          <span style="font-size:11.5px; color:var(--text3); font-family:'DM Mono',monospace" id="videoInfo"></span>
+        </div>
+      </div>
+
+      <!-- Panel -->
+      <div class="panel">
+        <div class="panel-scroll">
+
+          <!-- Source image -->
+          <div class="panel-block">
+            <div class="block-title">Source Image</div>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+              <div class="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                </svg>
+              </div>
+              <span class="upload-label" id="uploadLabel">Click or drag image</span>
+              <span class="upload-sublabel">PNG, JPG, WEBP</span>
+              <span class="upload-filename" id="uploadFilename" style="display:none"></span>
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+            <img id="sourceThumb" class="source-thumb" alt="Source" />
+
+            <div class="toggle-row" style="margin-top:12px">
+              <span class="toggle-label">Text to Video (no image)</span>
+              <label class="toggle">
+                <input type="checkbox" id="textToVideo" onchange="toggleTextToVideo()">
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Prompt -->
+          <div class="panel-block">
+            <div class="block-title">Prompt</div>
+            <div class="field">
+              <label class="field-label">Positive</label>
+              <textarea class="field-input" id="prompt" placeholder="Describe the video scene, actions, sounds and dialogue..."></textarea>
+            </div>
+            <div class="field">
+              <label class="field-label">Negative</label>
+              <textarea class="field-input" id="negativePrompt" style="min-height:54px">pc game, console game, video game, cartoon, ugly</textarea>
+            </div>
+          </div>
+
+          <!-- Parameters -->
+          <div class="panel-block">
+            <div class="block-title">Parameters</div>
+
+            <!-- Resolution -->
+            <div class="field">
+              <div class="field-label-row">
+                <label class="field-label">Resolution</label>
+                <button class="link-btn" id="customToggle" onclick="toggleCustomSize()">Custom</button>
+              </div>
+              <div class="ratio-grid" id="ratioGrid">
+                <span class="ratio-group-label">SD — Fast</span>
+                <button class="ratio-btn" onclick="setRatio(512,512,this)">1:1<span>512²</span></button>
+                <button class="ratio-btn" onclick="setRatio(768,432,this)">16:9<span>768×432</span></button>
+                <button class="ratio-btn active" onclick="setRatio(512,896,this)">9:16<span>512×896</span></button>
+                <button class="ratio-btn" onclick="setRatio(768,512,this)">3:2<span>768×512</span></button>
+                <button class="ratio-btn" onclick="setRatio(512,768,this)">2:3<span>512×768</span></button>
+                <button class="ratio-btn" onclick="setRatio(640,640,this)">1:1<span>640²</span></button>
+
+                <span class="ratio-group-label">HD — 720p</span>
+                <button class="ratio-btn" onclick="setRatio(1280,720,this)">16:9<span>1280×720</span></button>
+                <button class="ratio-btn" onclick="setRatio(720,1280,this)">9:16<span>720×1280</span></button>
+                <button class="ratio-btn" onclick="setRatio(960,544,this)">16:9<span>960×544</span></button>
+                <button class="ratio-btn" onclick="setRatio(1024,576,this)">16:9<span>1024×576</span></button>
+                <button class="ratio-btn" onclick="setRatio(576,1024,this)">9:16<span>576×1024</span></button>
+                <button class="ratio-btn" onclick="setRatio(768,768,this)">1:1<span>768²</span></button>
+
+                <span class="ratio-group-label">FHD — 1080p</span>
+                <button class="ratio-btn" onclick="setRatio(1920,1088,this)">16:9<span>1920×1088</span></button>
+                <button class="ratio-btn" onclick="setRatio(1088,1920,this)">9:16<span>1088×1920</span></button>
+                <button class="ratio-btn" onclick="setRatio(1440,816,this)">16:9<span>1440×816</span></button>
+                <button class="ratio-btn" onclick="setRatio(816,1440,this)">9:16<span>816×1440</span></button>
+                <button class="ratio-btn" onclick="setRatio(1080,1080,this)">1:1<span>1080²</span></button>
+                <button class="ratio-btn" onclick="setRatio(1200,960,this)">5:4<span>1200×960</span></button>
+
+                <span class="ratio-group-label">2K — High Res</span>
+                <button class="ratio-btn" onclick="setRatio(2560,1440,this)">16:9<span>2560×1440</span></button>
+                <button class="ratio-btn" onclick="setRatio(1440,2560,this)">9:16<span>1440×2560</span></button>
+                <button class="ratio-btn" onclick="setRatio(1920,1088,this)">FHD<span>upscaled</span></button>
+              </div>
+              <div id="customSize" style="display:none; margin-top:8px">
+                <div class="params-grid">
+                  <div class="param-field">
+                    <label class="field-label">Width</label>
+                    <input type="number" class="param-input" id="width" value="512" min="256" max="1920" step="32">
+                  </div>
+                  <div class="param-field">
+                    <label class="field-label">Height</label>
+                    <input type="number" class="param-input" id="height" value="896" min="256" max="1920" step="32">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Duration + FPS -->
+            <div class="params-grid" style="margin-bottom:8px">
+              <div class="param-field">
+                <label class="field-label">Duration (s)</label>
+                <input type="number" class="param-input" id="duration" value="10" min="2" max="30" step="1">
+              </div>
+              <div class="param-field">
+                <label class="field-label">Frame Rate</label>
+                <input type="number" class="param-input" id="framerate" value="25" min="8" max="50" step="1">
+              </div>
+            </div>
+
+            <!-- Seed -->
+            <div class="param-field">
+              <label class="field-label">Seed</label>
+              <input type="number" class="param-input" id="seed" value="-1">
+            </div>
+          </div>
+
+          <!-- Generate -->
+          <button class="btn-generate" id="generateBtn" onclick="generate()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Generate Video
+          </button>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">✓</span>
+    <span class="toast-message" id="toastMessage">Done</span>
+  </div>
+
+  <script>
+    let uploadedFile = null;
+    let customSizeActive = false;
+    let currentVideoUrl = null;
+
+    // Default ratio active
+    setRatio(512, 896, document.querySelector('.ratio-btn.active'));
+
+    // Preload image from gallery if passed via ?imageUrl=
+    window.onload = () => {
+      const params = new URLSearchParams(window.location.search);
+      const imageUrl = params.get('imageUrl');
+      if (imageUrl) {
+        // Show thumbnail
+        const thumb = document.getElementById('sourceThumb');
+        thumb.src = imageUrl;
+        thumb.style.display = 'block';
+
+        // Store as imageUrl for the backend (not a File object)
+        document.getElementById('uploadLabel').textContent = imageUrl.split('/').pop();
+        document.getElementById('uploadZone').classList.add('has-file');
+        document.getElementById('canvasStatus').textContent = imageUrl.split('/').pop();
+
+        // Flag so generate() sends imageUrl instead of file
+        window._preloadedImageUrl = imageUrl;
+        showToast('Immagine dalla gallery caricata', 'success');
+      }
+    };
+
+    // ── File upload ──
+    const fileInput = document.getElementById('fileInput');
+    const uploadZone = document.getElementById('uploadZone');
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'var(--accent)'; });
+    uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.style.borderColor = '';
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    // Drag onto canvas viewport
+    const viewport = document.getElementById('canvasViewport');
+    viewport.addEventListener('dragover', e => { e.preventDefault(); document.getElementById('dropOverlay').classList.add('active'); });
+    viewport.addEventListener('dragleave', () => { document.getElementById('dropOverlay').classList.remove('active'); });
+    viewport.addEventListener('drop', e => {
+      e.preventDefault();
+      document.getElementById('dropOverlay').classList.remove('active');
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) { showToast('Seleziona un file immagine', 'error'); return; }
+      uploadedFile = file;
+
+      // Show in upload zone
+      uploadZone.classList.add('has-file');
+      document.getElementById('uploadLabel').style.display = 'none';
+      const fn = document.getElementById('uploadFilename');
+      fn.textContent = file.name;
+      fn.style.display = 'block';
+
+      // Preview thumbnail in panel
+      const reader = new FileReader();
+      reader.onload = e => {
+        const thumb = document.getElementById('sourceThumb');
+        thumb.src = e.target.result;
+        thumb.style.display = 'block';
+        document.getElementById('canvasStatus').textContent = file.name;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function toggleTextToVideo() {
+      const t2v = document.getElementById('textToVideo').checked;
+      uploadZone.style.opacity = t2v ? '0.4' : '1';
+      uploadZone.style.pointerEvents = t2v ? 'none' : '';
+    }
+
+    // ── Resolution ──
+    function setRatio(w, h, btn) {
+      document.getElementById('width').value = w;
+      document.getElementById('height').value = h;
+      document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+
+    function toggleCustomSize() {
+      customSizeActive = !customSizeActive;
+      document.getElementById('customSize').style.display = customSizeActive ? 'block' : 'none';
+      document.getElementById('ratioGrid').style.display = customSizeActive ? 'none' : 'grid';
+      const btn = document.getElementById('customToggle');
+      btn.classList.toggle('active', customSizeActive);
+      btn.textContent = customSizeActive ? 'Presets' : 'Custom';
+    }
+
+    // ── Generate ──
+    async function generate() {
+      const t2v = document.getElementById('textToVideo').checked;
+      if (!t2v && !uploadedFile && !window._preloadedImageUrl) { showToast('Carica un\'immagine o attiva Text to Video', 'warning'); return; }
+
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!prompt) { showToast('Inserisci un prompt', 'warning'); return; }
+
+      const btn = document.getElementById('generateBtn');
+      const overlay = document.getElementById('genOverlay');
+      const status = document.getElementById('genStatus');
+
+      btn.disabled = true;
+      overlay.classList.add('active');
+      status.textContent = 'Preparing...';
+
+      try {
+        // Build FormData — backend needs image + params
+        const formData = new FormData();
+        if (!t2v) {
+          if (uploadedFile) formData.append('image', uploadedFile);
+          else if (window._preloadedImageUrl) formData.append('imageUrl', window._preloadedImageUrl);
+        }
+        formData.append('prompt', prompt);
+        formData.append('negativePrompt', document.getElementById('negativePrompt').value);
+        formData.append('width', document.getElementById('width').value);
+        formData.append('height', document.getElementById('height').value);
+        formData.append('duration', document.getElementById('duration').value);
+        formData.append('framerate', document.getElementById('framerate').value);
+        formData.append('seed', document.getElementById('seed').value);
+        formData.append('textToVideo', t2v);
+
+        status.textContent = 'Sending to RunPod...';
+
+        const res = await fetch('/api/generate-video', {
+          method: 'POST',
+          body: formData
+        });
+
+        status.textContent = 'Processing...';
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+
+        // Show result video
+        const video = document.getElementById('resultVideo');
+        video.src = data.url;
+        video.style.display = 'block';
+        document.getElementById('placeholder').style.display = 'none';
+
+        currentVideoUrl = data.url;
+        document.getElementById('downloadBtn').style.display = 'flex';
+        document.getElementById('canvasStatus').textContent = `${data.filename} · ${document.getElementById('duration').value}s`;
+        document.getElementById('videoInfo').textContent = `${document.getElementById('width').value}×${document.getElementById('height').value} · ${document.getElementById('framerate').value}fps · ${document.getElementById('duration').value}s`;
+
+        video.play();
+        showToast('Video generato', 'success');
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        overlay.classList.remove('active');
+      }
+    }
+
+    function downloadVideo() {
+      if (!currentVideoUrl) return;
+      const a = document.createElement('a');
+      a.href = currentVideoUrl;
+      a.download = currentVideoUrl.split('/').pop();
+      a.click();
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const icons = { success: '✓', error: '✕', warning: '⚠' };
+      document.getElementById('toastIcon').textContent = icons[type] || 'ℹ';
+      document.getElementById('toastMessage').textContent = message;
+      toast.className = 'toast ' + type;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>

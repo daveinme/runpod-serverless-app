@@ -1,0 +1,6 @@
+node_modules/
+users.db
+public/outputs/*.png
+public/outputs/*.mp4
+public/outputs/history.json
+.env

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Sitora AI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f0f0f; color: #fff; font-family: 'Inter', system-ui, sans-serif; padding: 40px 24px; }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    p { color: #666; font-size: 13px; margin-bottom: 32px; }
+    table { width: 100%; border-collapse: collapse; max-width: 800px; }
+    th { text-align: left; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 12px; border-bottom: 1px solid #222; }
+    td { padding: 12px; border-bottom: 1px solid #1a1a1a; font-size: 14px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+    .badge.approved { background: #1a3a1a; color: #4ade80; }
+    .badge.pending { background: #3a2a0a; color: #fbbf24; }
+    button { background: #fff; color: #111; border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+    button:hover { background: #ddd; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    .back { display: inline-block; margin-bottom: 24px; color: #666; font-size: 13px; text-decoration: none; }
+    .back:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <a href="/" class="back">← App</a>
+  <h1>Gestione utenti</h1>
+  <p>Approva gli utenti che possono accedere all'app.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Email</th>
+        <th>Stato</th>
+        <th>Registrato</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="users"></tbody>
+  </table>
+
+  <script>
+    async function load() {
+      const res = await fetch('/admin/users');
+      if (!res.ok) { document.body.innerHTML = '<p style="color:#f87171;padding:40px">Accesso negato</p>'; return; }
+      const users = await res.json();
+      const tbody = document.getElementById('users');
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td>${u.name || '—'}</td>
+          <td>${u.email}</td>
+          <td><span class="badge ${u.approved ? 'approved' : 'pending'}">${u.approved ? 'Approvato' : 'In attesa'}</span></td>
+          <td>${new Date(u.created_at).toLocaleDateString('it-IT')}</td>
+          <td>${!u.approved ? `<button onclick="approve('${u.email}', this)">Approva</button>` : ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function approve(email, btn) {
+      btn.disabled = true;
+      await fetch('/admin/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      load();
+    }
+
+    load();
+  </script>
+</body>
+</html>
