@@ -648,11 +648,11 @@
           : `${item.width}×${item.height} · ${item.steps} steps · ${date}`;
 
         const media = isVideo
-          ? `<video src="/outputs/${item.filename}" muted loop preload="metadata" style="pointer-events:none"></video>`
-          : `<img src="/outputs/${item.filename}" loading="lazy" />`;
+          ? `<video src="${item.url}" muted loop preload="metadata" style="pointer-events:none"></video>`
+          : `<img src="${item.url}" loading="lazy" />`;
 
         const makeVideoBtn = !isVideo
-          ? `<button class="gallery-btn make-video" onclick="sendToVideo('/outputs/${item.filename}')" title="Crea video">▶</button>`
+          ? `<button class="gallery-btn make-video" onclick="sendToVideo('${item.url}')" title="Crea video">▶</button>`
           : '';
 
         return `
@@ -665,7 +665,7 @@
             </div>
             <div class="gallery-actions" onclick="event.stopPropagation()">
               ${makeVideoBtn}
-              <a class="gallery-btn" href="/outputs/${item.filename}" download="${item.filename}" title="Download">↓</a>
+              <a class="gallery-btn" href="${item.url}" download="${item.filename}" title="Download">↓</a>
               <button class="gallery-btn delete" onclick="deleteItem('${item.filename}')" title="Delete">✕</button>
             </div>
           </div>`;
@@ -682,18 +682,18 @@
       const vid = document.getElementById('lightboxVideo');
 
       if (isVideo) {
-        vid.src = `/outputs/${item.filename}`;
+        vid.src = item.url;
         vid.style.display = 'block';
         img.style.display = 'none';
         vid.play();
       } else {
-        img.src = `/outputs/${item.filename}`;
+        img.src = item.url;
         img.style.display = 'block';
         vid.style.display = 'none';
         vid.pause();
       }
 
-      document.getElementById('lightboxDownload').href = `/outputs/${item.filename}`;
+      document.getElementById('lightboxDownload').href = item.url;
       document.getElementById('lightboxDownload').download = item.filename;
       document.getElementById('lightboxPrompt').textContent = item.prompt || item.positivePrompt || '—';
       document.getElementById('lightboxParams').textContent = isVideo
@@ -718,7 +718,7 @@
     }
 
     function sendToVideo(imageUrl) {
-      const url = imageUrl || (currentLightboxItem ? `/outputs/${currentLightboxItem.filename}` : null);
+      const url = imageUrl || (currentLightboxItem ? currentLightboxItem.url : null);
       if (!url) return;
       closeLightbox();
       window.location.href = `/video.html?imageUrl=${encodeURIComponent(url)}`;

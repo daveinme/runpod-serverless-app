@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { deleteObject, publicUrl } = require('../r2');
 
 const router = express.Router();
 const OUTPUTS_DIR = path.join(__dirname, '../public/outputs');
@@ -17,22 +18,32 @@ function writeHistory(history) {
 
 router.get('/gallery', (req, res) => {
   const userId = req.user.id;
-  const history = readHistory().filter(i => i.userId === userId);
+  const history = readHistory()
+    .filter(i => i.userId === userId)
+    .map(i => ({
+      ...i,
+      url: i.r2Key ? publicUrl(i.r2Key) : `/outputs/${i.filename}`,
+    }));
   res.json(history);
 });
 
-router.delete('/gallery/:filename', (req, res) => {
+router.delete('/gallery/:filename', async (req, res) => {
   const { filename } = req.params;
   const userId = req.user.id;
 
   const history = readHistory();
   const entry = history.find(i => i.filename === filename);
 
-  // Sicurezza: solo il proprietario può cancellare
   if (!entry || entry.userId !== userId) {
     return res.status(403).json({ error: 'Non autorizzato' });
   }
 
+  // Cancella da R2 se presente
+  if (entry.r2Key) {
+    try { await deleteObject(entry.r2Key); } catch (_) {}
+  }
+
+  // Cancella file locale se ancora presente
   const filepath = path.join(OUTPUTS_DIR, filename);
   if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
 
