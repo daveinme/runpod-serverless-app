@@ -104,22 +104,28 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
 
     const base64Data = videoBase64.replace(/^data:video\/\w+;base64,/, '');
     const filename = `${Date.now()}.mp4`;
-    const filepath = path.join(OUTPUTS_DIR, filename);
-    fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+    const buffer = Buffer.from(base64Data, 'base64');
+    const userId = req.user.id;
+    const r2Key = `outputs/${userId}/${filename}`;
+
+    const { uploadBuffer, publicUrl } = require('../r2');
+    await uploadBuffer(r2Key, buffer, 'video/mp4');
 
     // Save metadata
     const metaFile = path.join(OUTPUTS_DIR, 'history.json');
     const history = fs.existsSync(metaFile) ? JSON.parse(fs.readFileSync(metaFile, 'utf8')) : [];
     history.unshift({
       filename,
+      r2Key,
       type: 'video',
       ts: Date.now(),
-      userId: req.user?.id,
+      userId,
       ...params
     });
     fs.writeFileSync(metaFile, JSON.stringify(history, null, 2));
 
-    res.json({ success: true, filename, url: `/outputs/${filename}` });
+    const url = publicUrl(r2Key);
+    res.json({ success: true, filename, url });
 
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -99,8 +99,12 @@ router.post('/generate', async (req, res) => {
 
     const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
     const filename = `${Date.now()}.png`;
-    const filepath = path.join(OUTPUTS_DIR, filename);
-    fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+    const buffer = Buffer.from(base64Data, 'base64');
+    const userId = req.user.id;
+    const r2Key = `outputs/${userId}/${filename}`;
+
+    const { uploadBuffer, publicUrl } = require('../r2');
+    await uploadBuffer(r2Key, buffer, 'image/png');
 
     // Salva metadati
     const metaFile = path.join(OUTPUTS_DIR, 'history.json');
@@ -110,14 +114,16 @@ router.post('/generate', async (req, res) => {
 
     history.unshift({
       filename,
+      r2Key,
       ts: Date.now(),
-      userId: req.user?.id,
+      userId,
       ...params
     });
 
     fs.writeFileSync(metaFile, JSON.stringify(history, null, 2));
 
-    res.json({ success: true, filename, url: `/outputs/${filename}` });
+    const url = publicUrl(r2Key);
+    res.json({ success: true, filename, url });
 
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

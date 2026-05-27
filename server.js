@@ -37,6 +37,7 @@ app.use('/', require('./routes/auth'));
 app.use('/api', requireAuth, require('./routes/generate'));
 app.use('/api', requireAuth, require('./routes/generate-video'));
 app.use('/api', requireAuth, require('./routes/gallery'));
+app.use('/api', requireAuth, require('./routes/media'));
 
 app.listen(PORT, () => {
   console.log(`ComfyUI RunPod → http://localhost:${PORT}`);
