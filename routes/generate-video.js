@@ -8,7 +8,7 @@ const { RUNPOD_API_KEY, ENDPOINTS } = require('../config');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const OUTPUTS_DIR = path.join(__dirname, '../public/outputs');
-const BASE_WORKFLOW = JSON.parse(fs.readFileSync(path.join(__dirname, '../../comfyui-10eros/api-workflow.json'), 'utf8'));
+const BASE_WORKFLOW = JSON.parse(fs.readFileSync(path.join(__dirname, '../api-workflow.json'), 'utf8'));
 
 function buildVideoWorkflow(params, imageBase64) {
   const { prompt, negativePrompt, width, height, duration, framerate, seed, textToVideo } = params;
