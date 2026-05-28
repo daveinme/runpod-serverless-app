@@ -37,7 +37,9 @@ async function pollJob(jobId, endpointId) {
     const res = await fetch(url, {
       headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
     });
-    const data = await res.json();
+    const text = await res.text();
+    console.log('[pollJob] status:', res.status, text.slice(0, 500));
+    const data = JSON.parse(text);
     if (data.status === 'COMPLETED') return data;
     if (data.status === 'FAILED') throw new Error(data.error || 'Job fallito');
   }
