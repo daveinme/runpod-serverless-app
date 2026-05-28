@@ -76,6 +76,7 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     }
 
     const workflow = buildVideoWorkflow(params, imageBase64);
+    console.log('[generate-video] node339:', JSON.stringify(workflow['339'].inputs));
 
     const runRes = await fetch(`https://api.runpod.ai/v2/${endpointId}/run`, {
       method: 'POST',
