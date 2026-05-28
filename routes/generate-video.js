@@ -10,11 +10,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 const OUTPUTS_DIR = path.join(__dirname, '../public/outputs');
 const BASE_WORKFLOW = JSON.parse(fs.readFileSync(path.join(__dirname, '../api-workflow.json'), 'utf8'));
 
-function buildVideoWorkflow(params, imageBase64) {
+function buildVideoWorkflow(params, imageFilename) {
   const { prompt, negativePrompt, width, height, duration, framerate, seed, textToVideo } = params;
   const actualSeed = seed === -1 ? Math.floor(Math.random() * 2 ** 32) : seed;
 
-  // Deep clone base workflow and patch only the variable nodes
   const workflow = JSON.parse(JSON.stringify(BASE_WORKFLOW));
 
   workflow["325"].inputs.noise_seed = actualSeed;
@@ -26,7 +25,7 @@ function buildVideoWorkflow(params, imageBase64) {
   workflow["349"].inputs.value = framerate;
   workflow["350"].inputs.value = duration;
   workflow["351"].inputs.value = textToVideo;
-  workflow["377"].inputs.image = imageBase64 ? `data:image/png;base64,${imageBase64}` : 'example.png';
+  workflow["377"].inputs.image = imageFilename || 'example.png';
 
   return workflow;
 }
@@ -65,23 +64,29 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
 
     // Convert uploaded image to base64 if provided
     let imageBase64 = null;
+    let imageFilename = null;
     if (req.file && !textToVideo) {
       imageBase64 = req.file.buffer.toString('base64');
+      imageFilename = `input_${Date.now()}.png`;
     } else if (req.body.imageUrl && !textToVideo) {
-      // Support passing an existing output image URL (e.g. /outputs/xxx.png)
       const imgPath = path.join(__dirname, '../public', req.body.imageUrl);
       if (fs.existsSync(imgPath)) {
         imageBase64 = fs.readFileSync(imgPath).toString('base64');
+        imageFilename = `input_${Date.now()}.png`;
       }
     }
 
-    const workflow = buildVideoWorkflow(params, imageBase64);
-    console.log('[generate-video] node339:', JSON.stringify(workflow['339'].inputs));
+    const workflow = buildVideoWorkflow(params, imageFilename);
+
+    const requestBody = { input: { workflow } };
+    if (imageBase64 && imageFilename) {
+      requestBody.input.images = [{ name: imageFilename, image: imageBase64 }];
+    }
 
     const runRes = await fetch(`https://api.runpod.ai/v2/${endpointId}/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RUNPOD_API_KEY}` },
-      body: JSON.stringify({ input: { workflow } })
+      body: JSON.stringify(requestBody)
     });
 
     const runText = await runRes.text();
