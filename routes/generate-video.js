@@ -38,8 +38,11 @@ async function pollJob(jobId, endpointId) {
       headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
     });
     const text = await res.text();
-    console.log('[pollJob] status:', res.status, text.slice(0, 500));
     const data = JSON.parse(text);
+    if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+      const elapsed = Date.now() - jobStart;
+      console.log(`[pollJob] ${data.status} — execTime: ${data.executionTime}ms — totalWait: ${elapsed}ms`);
+    }
     if (data.status === 'COMPLETED') return data;
     if (data.status === 'FAILED') throw new Error(data.error || 'Job fallito');
   }
@@ -79,8 +82,6 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     }
 
     const workflow = buildVideoWorkflow(params, imageFilename);
-    console.log('[generate-video] node339:', JSON.stringify(workflow['339'].inputs));
-
     const requestBody = { input: { workflow } };
     if (imageBase64 && imageFilename) {
       requestBody.input.images = [{ name: imageFilename, image: imageBase64 }];
@@ -93,8 +94,9 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     });
 
     const runText = await runRes.text();
-    console.log('[generate-video] runpod response:', runRes.status, runText.slice(0, 300));
     const runData = JSON.parse(runText);
+    const jobStart = Date.now();
+    console.log(`[generate-video] job queued: ${runData.id}`);
     if (!runData.id) throw new Error(runData.detail || 'Errore avvio job');
 
     const result = await pollJob(runData.id, endpointId);
@@ -120,26 +122,15 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     const base64Data = videoBase64.replace(/^data:video\/\w+;base64,/, '');
     const filename = `${Date.now()}.mp4`;
     const buffer = Buffer.from(base64Data, 'base64');
+    console.log(`[generate-video] video decoded: ${buffer.length} bytes`);
     const userId = req.user.id;
     const r2Key = `outputs/${userId}/${filename}`;
 
     const { uploadBuffer, publicUrl } = require('../r2');
+    console.log(`[generate-video] uploading to R2: ${r2Key}`);
     await uploadBuffer(r2Key, buffer, 'video/mp4');
-
-    // Save metadata
-    const metaFile = path.join(OUTPUTS_DIR, 'history.json');
-    const history = fs.existsSync(metaFile) ? JSON.parse(fs.readFileSync(metaFile, 'utf8')) : [];
-    history.unshift({
-      filename,
-      r2Key,
-      type: 'video',
-      ts: Date.now(),
-      userId,
-      ...params
-    });
-    fs.writeFileSync(metaFile, JSON.stringify(history, null, 2));
-
     const url = publicUrl(r2Key);
+    console.log(`[generate-video] uploaded OK: ${url}`);
     res.json({ success: true, filename, url });
 
   } catch (err) {
