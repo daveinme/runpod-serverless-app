@@ -100,17 +100,21 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     const result = await pollJob(runData.id, endpointId);
     const output = result.output;
 
-    // Extract video — RunPod worker-comfyui returns videos as base64 in output.videos[]
+    // Extract video — handler returns output.outputs[{filename, type, data}]
     let videoBase64 = null;
-    if (output?.videos?.[0]) videoBase64 = output.videos[0];
-    else if (output?.video) videoBase64 = output.video;
-    else if (typeof output === 'string') videoBase64 = output;
+    if (output?.outputs?.length > 0) {
+      const item = output.outputs[0];
+      videoBase64 = item.data || null;
+    } else if (output?.videos?.[0]) {
+      const item = output.videos[0];
+      videoBase64 = typeof item === 'string' ? item : item.data;
+    } else if (output?.video) {
+      videoBase64 = output.video;
+    } else if (typeof output === 'string') {
+      videoBase64 = output;
+    }
 
     if (!videoBase64) throw new Error('Nessun video nel risultato');
-
-    if (typeof videoBase64 === 'object') {
-      videoBase64 = videoBase64.data || videoBase64.video || Object.values(videoBase64)[0];
-    }
     if (typeof videoBase64 !== 'string') throw new Error('Formato video non riconosciuto');
 
     const base64Data = videoBase64.replace(/^data:video\/\w+;base64,/, '');
