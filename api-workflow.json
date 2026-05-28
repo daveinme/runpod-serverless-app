@@ -244,7 +244,8 @@
         0
       ],
       "resize_type": "scale dimensions",
-      "scale_method": 1920
+      "scale_method": "lanczos",
+      "crop": "center"
     },
     "class_type": "ResizeImageMaskNode",
     "_meta": {
