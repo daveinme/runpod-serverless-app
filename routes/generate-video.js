@@ -83,7 +83,9 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
       body: JSON.stringify({ input: { workflow } })
     });
 
-    const runData = await runRes.json();
+    const runText = await runRes.text();
+    console.log('[generate-video] runpod response:', runRes.status, runText.slice(0, 300));
+    const runData = JSON.parse(runText);
     if (!runData.id) throw new Error(runData.detail || 'Errore avvio job');
 
     const result = await pollJob(runData.id, endpointId);
