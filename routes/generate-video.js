@@ -143,6 +143,7 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     res.json({ success: true, filename, url });
 
   } catch (err) {
+    console.error('[generate-video] ERROR:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
