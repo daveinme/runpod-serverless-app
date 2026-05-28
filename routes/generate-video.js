@@ -77,6 +77,7 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     }
 
     const workflow = buildVideoWorkflow(params, imageFilename);
+    console.log('[generate-video] node339:', JSON.stringify(workflow['339'].inputs));
 
     const requestBody = { input: { workflow } };
     if (imageBase64 && imageFilename) {
