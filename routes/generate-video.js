@@ -4,10 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { RUNPOD_API_KEY, ENDPOINTS } = require('../config');
+const { insert: insertGeneration } = require('../generations');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
-const OUTPUTS_DIR = path.join(__dirname, '../public/outputs');
 const BASE_WORKFLOW = JSON.parse(fs.readFileSync(path.join(__dirname, '../api-workflow.json'), 'utf8'));
 
 function buildVideoWorkflow(params, imageFilename) {
@@ -30,7 +30,7 @@ function buildVideoWorkflow(params, imageFilename) {
   return workflow;
 }
 
-async function pollJob(jobId, endpointId) {
+async function pollJob(jobId, endpointId, jobStart) {
   const url = `https://api.runpod.ai/v2/${endpointId}/status/${jobId}`;
   while (true) {
     await new Promise(r => setTimeout(r, 5000));
@@ -99,7 +99,7 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     console.log(`[generate-video] job queued: ${runData.id}`);
     if (!runData.id) throw new Error(runData.detail || 'Errore avvio job');
 
-    const result = await pollJob(runData.id, endpointId);
+    const result = await pollJob(runData.id, endpointId, jobStart);
     const output = result.output;
 
     // Extract video — handler returns output.outputs[{filename, type, data}]
@@ -124,13 +124,22 @@ router.post('/generate-video', upload.single('image'), async (req, res) => {
     const buffer = Buffer.from(base64Data, 'base64');
     console.log(`[generate-video] video decoded: ${buffer.length} bytes`);
     const userId = req.user.id;
-    const r2Key = `outputs/${userId}/${filename}`;
+    const userEmail = req.user.email;
+    const today = new Date().toISOString().slice(0, 10);
+    const r2Key = `outputs/${userEmail}/${today}/${filename}`;
 
     const { uploadBuffer, publicUrl } = require('../r2');
     console.log(`[generate-video] uploading to R2: ${r2Key}`);
     await uploadBuffer(r2Key, buffer, 'video/mp4');
     const url = publicUrl(r2Key);
     console.log(`[generate-video] uploaded OK: ${url}`);
+
+    insertGeneration({
+      userId, filename, r2Key, type: 'video',
+      prompt: params.prompt, width: params.width, height: params.height,
+      duration: params.duration, framerate: params.framerate
+    });
+
     res.json({ success: true, filename, url });
 
   } catch (err) {
